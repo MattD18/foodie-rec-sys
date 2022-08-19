@@ -1,0 +1,14 @@
+name: 'data_warehouse'
+
+config-version: 2
+version: '0.1'
+
+profile: 'default'
+
+model-paths: ["models"]
+
+
+
+models:
+  data_warehouse: # Change from `my_new_project` to match the previous value for `name:`
+    
