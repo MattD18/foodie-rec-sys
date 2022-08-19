@@ -9,7 +9,7 @@ sources:
       - name: users
         identifier: dim_user
         description: "mock generated user data"
-      - name: restaurants
+      - name: objects
         identifier: dim_restaurant
         description: "mock generated user data"
       - name: interactions

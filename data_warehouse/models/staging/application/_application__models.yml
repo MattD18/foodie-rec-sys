@@ -1,0 +1,6 @@
+version: 2
+
+models:
+  - name: stg_application__interactions
+  - name: stg_application__objects
+  - name: stg_application__users
