@@ -2,10 +2,19 @@
 
 --build infrequently
 --write python file to autogenerate lookup tables
+
 with zipcodes as (
-  select 
-    distinct zip as zip_code
-  from {{ ref('int_objects') }}
+    select 
+        distinct cast(home_zipcode as string) as zip_code 
+    from {{ ref('int_users') }}
+    union distinct
+    select 
+        distinct cast(work_zipcode as string) as zip_code 
+    from {{ ref('int_users') }}
+    union distinct
+    select 
+        distinct zip as zip_code
+    from {{ ref('int_objects') }}
 ), lookup_table as (
   select
     zip_code,
