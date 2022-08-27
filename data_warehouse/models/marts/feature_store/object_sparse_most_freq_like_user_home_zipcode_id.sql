@@ -1,3 +1,5 @@
+{{ config(materialized='table') }}
+
 with df as (
   select 
     a.restaurant_id,
@@ -10,7 +12,7 @@ with df as (
   on a.user_id = b.user_id
   left join {{ ref('lookup_zipcode_id') }} c
   on cast(b.home_zipcode as string) = c.zip_code
-  where a.engagement_type = 'visit'
+  where a.engagement_type = 'like'
 )
 
 

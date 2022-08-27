@@ -1,3 +1,5 @@
+{{ config(materialized='table') }}
+
 select
     engagement_id,
     PARSE_DATETIME('%Y-%m-%d %H:%M:%S', ts) as ts,

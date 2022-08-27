@@ -1,4 +1,5 @@
 
+{{ config(materialized='table') }}
 
 --build infrequently
 --write python file to autogenerate lookup tables
