@@ -1,8 +1,11 @@
 
-# Data
+
 data:
   table: like_given_impression
   start_ds: 2022-08-27
   end_ds: 2022-08-27
+model:
+  model_type: like_given_impresssion
+  model_arch: MostLikedModel
 
   

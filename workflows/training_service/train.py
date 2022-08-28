@@ -2,14 +2,17 @@ from metaflow import FlowSpec, step, IncludeFile, Parameter
 
 import os
 import yaml
+import time
+import pickle
 
 from google.cloud import bigquery
-from google.oauth2 import service_account
+from google.cloud import storage
 
 import pandas as pd
 
-
-
+import ranking
+from ranking.utils import get_model_from_config_spec
+from ranking.constants import MODEL_STORE
 
 class TrainFlow(FlowSpec):
     """
@@ -30,7 +33,7 @@ class TrainFlow(FlowSpec):
         with open(self.config_path,'rb') as f:
             self.config = yaml.load(f, Loader=yaml.BaseLoader)
 
-        print("HelloFlow is starting.")
+        print("TrainFlow is starting.")
         self.next(self.load_data)
 
     @step
@@ -41,15 +44,11 @@ class TrainFlow(FlowSpec):
         Notes:
         -abstract out bigquery connection into seperate class
         -how to handle when training data is too big to fit into memory
+        -down the line don't need to save data, pass reference?
         """
         project_id = os.environ['GCP_PROJECT']
-        key_path = os.environ['BQ_CREDENTIALS']
-
         # establish bigquery connection
-        credentials = service_account.Credentials.from_service_account_file(
-            key_path, scopes=["https://www.googleapis.com/auth/cloud-platform"],
-        )
-        client = bigquery.Client(credentials=credentials, project=credentials.project_id)
+        bq_client = bigquery.Client(project=project_id)
 
         # load training data per config
         training_table = self.config['data']['table']
@@ -63,7 +62,7 @@ class TrainFlow(FlowSpec):
                 and ds <= '{training_end_ds}'
         """
 
-        self.train_df = client.query(
+        self.train_df = bq_client.query(
             query=query
         ).to_dataframe()
 
@@ -73,8 +72,26 @@ class TrainFlow(FlowSpec):
     def train_model(self):
         """
         A step for training model
+
+        Note: 
+        need to figure out how to install local ranking modellibrary with dependencies
+        os pip install ? w/ dependencies in setup file
         """
+        model_arch = self.config['model']['model_arch']
+        model = get_model_from_config_spec(model_arch)
+        model.fit(self.train_df)
+        # save trained model to model store        
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(MODEL_STORE)
+        ts = int(time.time())
+        self.model_save_path = f"{self.config['model']['model_arch'].lower()}_{ts}.pickle"
+        blob = bucket.blob(self.model_save_path)
+        serialized_model = pickle.dumps(model)
+        blob.upload_from_string(serialized_model)
+        
         self.next(self.end)
+
+        
 
     @step
     def end(self):
