@@ -2,12 +2,13 @@ from metaflow import FlowSpec, step, Parameter
 
 import os
 import yaml
+import datetime
 
 from google.cloud import bigquery
-from google.cloud import storage
 
 import pandas as pd
 import numpy as np
+
 
 class DailyRuleBasedZipcodeV0Flow(FlowSpec):
     """
@@ -56,7 +57,7 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
         user_query = """
             select
                 user_id,
-                user_home_zipcode_id,
+                home_zipcode_id,
                 list_impression_r7d_restaurant_ids
             from warehouse_feature_store.user_sparse_features
             where ds = (select max(ds) from warehouse_feature_store.user_sparse_features)
@@ -77,7 +78,7 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
             query=restaurant_query
         ).to_dataframe()
 
-        self.next(self.train_model)
+        self.next(self.inference)
 
     @step
     def inference(self):
@@ -85,11 +86,14 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
         A step for running inference
 
         """
+        n = int(self.config['params']['n'])
+        n_in_zip_target = int(self.config['params']['n_in_zip'])
+
         prediction_list = []
         for _, record in self.user_df.iterrows():
             # get user info
             user_id = record['user_id']
-            user_zip_id = record['user_home_zipcode_id']
+            user_zip_id = record['home_zipcode_id']
             user_impression_restaurant_list = \
                 record['list_impression_r7d_restaurant_ids']
             # filter on unseen restaurants
@@ -100,23 +104,39 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
                 eligible_restaurant_df['restaurant_zipcode_id'] == user_zip_id
             # sample restaurants in zipcode
             in_zip_eligible_restaurant_df = eligible_restaurant_df[in_zip_mask]
-            in_zip_n = min(2, in_zip_eligible_restaurant_df.shape[0])
-            in_zip_selection = eligible_restaurant_df['restaurant_id'].sample(in_zip_n)
+            n_in_zip_ = min(
+                n_in_zip_target, 
+                in_zip_eligible_restaurant_df.shape[0]
+            )
+            in_zip_selection = eligible_restaurant_df['restaurant_id'] \
+                .sample(n_in_zip_).to_list()
             # sample restaurants out of zipcode
-            out_zip_eligible_restaurant_df = eligible_restaurant_df[~in_zip_mask]
-            out_zip_n = min(2, out_zip_eligible_restaurant_df.shape[0])
-            out_zip_selection = eligible_restaurant_df['restaurant_id'].sample(out_zip_n)
-            # TODO fill in remainder if necessary
-            # shuffle selection list
+            out_zip_eligible_restaurant_df = \
+                eligible_restaurant_df[~in_zip_mask]
+            out_zip_n = min(
+                max(n - len(in_zip_selection), n - n_in_zip_target),
+                out_zip_eligible_restaurant_df.shape[0]
+            )
+            out_zip_selection = eligible_restaurant_df['restaurant_id'] \
+                .sample(out_zip_n).to_list()
+            # fill in remainder if necessary
             user_selection = in_zip_selection + out_zip_selection
+            if len(user_selection) < n:
+                fill_mask = ~self.restaurant_df['restaurant_id'] \
+                    .isin(user_selection)
+                fill_restaurant_df = self.restaurant_df[fill_mask]
+                n_fill = n - len(user_selection)
+                fill_selection = fill_restaurant_df['restaurant_id'] \
+                    .sample(n_fill).to_list()
+                user_selection += fill_selection
+            # shuffle selection list
             np.random.shuffle(user_selection)
             # append to output
             prediction_list.append({
                 'user_id': user_id,
                 'restaurant_list': user_selection
             })
-        # format into dataframe
-        self.prediction_df = pd.DataFrame(prediction_list)  
+        self.prediction_df = pd.DataFrame(prediction_list)
         self.next(self.save)
 
     @step
@@ -124,8 +144,68 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
         """
         A step to save predictions
         """
-        # upload self.prediction_df
-        # need to figure out location
+        project_id = os.environ['GCP_PROJECT']
+        # establish bigquery connection
+        bq_client = bigquery.Client(project=project_id)
+        ds = datetime.date.today()
+        destination_table = self.config['data']['prediction_table']
+        # check that prediction doesn't exist for day
+        pred_check_query = f"""
+            select
+                max(ds)
+            from {destination_table}
+        """
+        pred_check = bq_client.query(query=pred_check_query).to_dataframe()
+        pred_check.iloc[0][0] == ds
+        # prepare prediction_df for upload
+        self.prediction_df['ds'] = ds
+        self.prediction_df['model_type'] = 'rule_based_zip_code'
+        self.prediction_df['model_id'] = 0
+        self.prediction_df['restaurant_list'] = \
+            self.prediction_df['restaurant_list'] \
+                .apply(lambda x: ', '.join([str(y) for y in x]))
+        ordered_cols = [
+            'ds',
+            'user_id',
+            'restaurant_list',
+            'model_type',
+            'model_id',
+        ]
+        self.prediction_df = self.prediction_df[ordered_cols]
+        # upload table
+        table_schema = [
+            {
+                "name": "ds",
+                "type": "DATE",
+                "mode": "NULLABLE"
+            },
+            {
+                "name": "user_id",
+                "type": "INTEGER",
+                "mode": "NULLABLE"
+            },
+            {
+                "name": "restaurant_list",
+                "type": "STRING",
+                "mode": "NULLABLE"
+            },
+            {
+                "name": "model_type",
+                "type": "STRING",
+                "mode": "NULLABLE"
+            },
+            {
+                "name": "model_id",
+                "type": "INTEGER",
+                "mode": "NULLABLE"
+            },
+        ]
+        self.prediction_df.to_gbq(
+            destination_table,
+            project_id=project_id,
+            if_exists='append',
+            table_schema=table_schema
+        )
         self.next(self.end)
 
     @step
