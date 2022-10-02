@@ -161,9 +161,9 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
         self.prediction_df['ds'] = ds
         self.prediction_df['model_type'] = 'rule_based_zip_code'
         self.prediction_df['model_id'] = 0
-        self.prediction_df['restaurant_list'] = \
-            self.prediction_df['restaurant_list'] \
-                .apply(lambda x: ', '.join([str(y) for y in x]))
+        # self.prediction_df['restaurant_list'] = \
+        #     self.prediction_df['restaurant_list'] \
+        #         .apply(lambda x: ', '.join([str(y) for y in x]))
         ordered_cols = [
             'ds',
             'user_id',
@@ -172,7 +172,7 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
             'model_id',
         ]
         self.prediction_df = self.prediction_df[ordered_cols]
-        # upload table
+        # upload table, TODO abstract table_schema to shared location
         table_schema = [
             {
                 "name": "ds",
@@ -186,8 +186,8 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
             },
             {
                 "name": "restaurant_list",
-                "type": "STRING",
-                "mode": "NULLABLE"
+                "type": "INTEGER",
+                "mode": "REPEATED"
             },
             {
                 "name": "model_type",
