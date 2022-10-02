@@ -28,6 +28,7 @@ class TableSetup(FlowSpec):
 
         Note:
         have to store restaurant predictions as string, need to revist
+        add logic to allow piecewise rebuilding of tables if needed
         """
         project_id = os.environ['GCP_PROJECT']
         # establish bigquery connection
@@ -97,9 +98,9 @@ class TableSetup(FlowSpec):
         table_ref = dataset_ref.table("dim_restaurant")
         schema = [
             bigquery.SchemaField("ds", "DATE"),
-            bigquery.SchemaField("restaurant_id", "INTEGER"),
+            bigquery.SchemaField("id", "INTEGER"),
             bigquery.SchemaField("name", "STRING"),
-            bigquery.SchemaField("created_at", "STRING"),
+            bigquery.SchemaField("created_at", "TIMESTAMP"),
             bigquery.SchemaField("address", "STRING"),
             bigquery.SchemaField("zipcode", "STRING"),
             bigquery.SchemaField("neighborhood", "STRING"),
@@ -121,7 +122,7 @@ class TableSetup(FlowSpec):
         table_ref = dataset_ref.table("dim_user")
         schema = [
             bigquery.SchemaField("ds", "DATE"),
-            bigquery.SchemaField("user_id", "INTEGER"),
+            bigquery.SchemaField("id", "INTEGER"),
             bigquery.SchemaField("neighborhood", "STRING"),
             bigquery.SchemaField("saved_list", "INTEGER"),
             bigquery.SchemaField("last_login", "TIMESTAMP"),
@@ -142,7 +143,7 @@ class TableSetup(FlowSpec):
         table_ref = dataset_ref.table("fct_user_engagement")
         schema = [
             bigquery.SchemaField("ds", "DATE"),
-            bigquery.SchemaField("engagement_id", "INTEGER"),
+            bigquery.SchemaField("id", "INTEGER"),
             bigquery.SchemaField("user_id", "INTEGER"),
             bigquery.SchemaField("restaurant_id", "INTEGER"),
             bigquery.SchemaField("ts", "TIMESTAMP"),
