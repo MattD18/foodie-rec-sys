@@ -144,10 +144,10 @@ class TableSetup(FlowSpec):
         schema = [
             bigquery.SchemaField("ds", "DATE"),
             bigquery.SchemaField("id", "INTEGER"),
-            bigquery.SchemaField("user_id", "INTEGER"),
+            bigquery.SchemaField("action", "STRING"),
+            bigquery.SchemaField("created_at", "TIMESTAMP"),
             bigquery.SchemaField("restaurant_id", "INTEGER"),
-            bigquery.SchemaField("ts", "TIMESTAMP"),
-            bigquery.SchemaField("engagement_type", "STRING"),
+            bigquery.SchemaField("user_id", "INTEGER"),
         ]
         table = bigquery.Table(table_ref, schema=schema)
         table.time_partitioning = bigquery.TimePartitioning(
