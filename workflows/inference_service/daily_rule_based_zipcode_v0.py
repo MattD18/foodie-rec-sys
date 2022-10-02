@@ -156,56 +156,58 @@ class DailyRuleBasedZipcodeV0Flow(FlowSpec):
             from {destination_table}
         """
         pred_check = bq_client.query(query=pred_check_query).to_dataframe()
-        pred_check.iloc[0][0] == ds
-        # prepare prediction_df for upload
-        self.prediction_df['ds'] = ds
-        self.prediction_df['model_type'] = 'rule_based_zip_code'
-        self.prediction_df['model_id'] = 0
-        # self.prediction_df['restaurant_list'] = \
-        #     self.prediction_df['restaurant_list'] \
-        #         .apply(lambda x: ', '.join([str(y) for y in x]))
-        ordered_cols = [
-            'ds',
-            'user_id',
-            'restaurant_list',
-            'model_type',
-            'model_id',
-        ]
-        self.prediction_df = self.prediction_df[ordered_cols]
-        # upload table, TODO abstract table_schema to shared location
-        table_schema = [
-            {
-                "name": "ds",
-                "type": "DATE",
-                "mode": "NULLABLE"
-            },
-            {
-                "name": "user_id",
-                "type": "INTEGER",
-                "mode": "NULLABLE"
-            },
-            {
-                "name": "restaurant_list",
-                "type": "INTEGER",
-                "mode": "REPEATED"
-            },
-            {
-                "name": "model_type",
-                "type": "STRING",
-                "mode": "NULLABLE"
-            },
-            {
-                "name": "model_id",
-                "type": "INTEGER",
-                "mode": "NULLABLE"
-            },
-        ]
-        self.prediction_df.to_gbq(
-            destination_table,
-            project_id=project_id,
-            if_exists='append',
-            table_schema=table_schema
-        )
+        if pred_check.iloc[0][0] != ds:
+            # prepare prediction_df for upload
+            self.prediction_df['ds'] = ds
+            self.prediction_df['model_type'] = 'rule_based_zip_code'
+            self.prediction_df['model_id'] = 0
+            # self.prediction_df['restaurant_list'] = \
+            #     self.prediction_df['restaurant_list'] \
+            #         .apply(lambda x: ', '.join([str(y) for y in x]))
+            ordered_cols = [
+                'ds',
+                'user_id',
+                'restaurant_list',
+                'model_type',
+                'model_id',
+            ]
+            self.prediction_df = self.prediction_df[ordered_cols]
+            # upload table, TODO abstract table_schema to shared location
+            table_schema = [
+                {
+                    "name": "ds",
+                    "type": "DATE",
+                    "mode": "NULLABLE"
+                },
+                {
+                    "name": "user_id",
+                    "type": "INTEGER",
+                    "mode": "NULLABLE"
+                },
+                {
+                    "name": "restaurant_list",
+                    "type": "INTEGER",
+                    "mode": "REPEATED"
+                },
+                {
+                    "name": "model_type",
+                    "type": "STRING",
+                    "mode": "NULLABLE"
+                },
+                {
+                    "name": "model_id",
+                    "type": "INTEGER",
+                    "mode": "NULLABLE"
+                },
+            ]
+            self.prediction_df.to_gbq(
+                destination_table,
+                project_id=project_id,
+                if_exists='append',
+                table_schema=table_schema
+            )
+        else:
+            print(f"{ds} already exists")
         self.next(self.end)
 
     @step
