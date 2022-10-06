@@ -1,0 +1,6 @@
+data:
+  prediction_table: predictions.user_daily_recs
+params:
+  n: 5
+  n_in_zip: 2
+  
