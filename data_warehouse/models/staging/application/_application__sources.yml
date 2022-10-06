@@ -3,7 +3,7 @@ version: 2
 sources:
   - name: application
     database: foodie-355420
-    dataset: mock_app_data
+    dataset: demo_data
     
     tables:
       - name: users

@@ -1,11 +1,30 @@
-{{ config(materialized='table') }}
+{{
+    config(
+        materialized='incremental',
+        incremental_strategy='insert_overwrite',
+        partition_by={
+            "field": "ds",
+            "data_type": "date",
+            "granularity": "day"
+        }
+    )
+}}
 --generate programatically (jinja or python)
+--build incrementally
+--start with restaurant table
+--for given ds join all restaurant sparse features
+
+with restaurant_df as (
+    select
+        restaurant_id
+    from {{ ref('int_objects') }}
+    where ds = (select max(ds) from {{ ref('int_objects') }})
+)
 
 select
-    coalesce(a.ds, b.ds) as ds,
-    coalesce(a.restaurant_id, b.restaurant_id) as restaurant_id,
-    a.restaurant_zipcode_id,
-    b.most_freq_user_home_zipcode_id
-from {{ ref('object_sparse_restaurant_zipcode_id') }} a
-full join {{ ref('object_sparse_most_freq_like_user_home_zipcode_id') }} b
-on a.ds = b.ds and a.restaurant_id = b.restaurant_id
+    CURRENT_DATE('America/New_York') as ds,
+    a.restaurant_id,
+    b.restaurant_neighborhood_id
+from restaurant_df a
+left join {{ ref('object_sparse_restaurant_neighborhood_id') }} b
+on a.restaurant_id = b.restaurant_id
