@@ -16,10 +16,12 @@ with neighborhoods as (
 )
 
 select
-  *
+    CURRENT_DATE('America/New_York') as ds,
+    *
 from lookup_table
 union all
 select 
-  'UNK' as neighborhood, 
-  (select count(*) from lookup_table) + 1 as id
+    CURRENT_DATE('America/New_York') as ds,
+    'UNK' as neighborhood, 
+    (select count(*) from lookup_table) + 1 as id
 
