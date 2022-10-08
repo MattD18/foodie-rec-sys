@@ -33,10 +33,12 @@ with restaurant_df as (
 select
   CAST('{{ var("ds") }}' as DATE) as ds,
   a.restaurant_id,
-  case 
-    when b.id is not null then b.id 
-    else (select count(*) from neighborhood_df) 
-  end as restaurant_neighborhood_id,
+  [
+    case 
+      when b.id is not null then b.id 
+      else (select count(*) from neighborhood_df) 
+    end
+  ] as restaurant_neighborhood_id,
   [
     STRUCT('int_objects' as table_name, a.ds as table_ds),
     STRUCT('lookup_neighborhood_id' as table_name, b.ds as table_ds)

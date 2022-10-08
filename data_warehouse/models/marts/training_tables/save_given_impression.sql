@@ -19,7 +19,8 @@
 {% 
     set feature_tables = [
         'user_sparse_neighborhood_id',
-        'object_sparse_restaurant_neighborhood_id'
+        'object_sparse_restaurant_neighborhood_id',
+        'user_sparse_saved_restaurant_ids'
     ]
 %}
 
@@ -27,6 +28,7 @@
     set feature_names = ({
         'user_sparse_neighborhood_id':'user_neighborhood_id',
         'object_sparse_restaurant_neighborhood_id':'restaurant_neighborhood_id',
+        'user_sparse_saved_restaurant_ids':'user_saved_restaurant_ids'
     })
 %}
 
@@ -74,15 +76,17 @@ select
     a.*,
     [
     {% for feature in feature_tables %}
+        {% if 'sparse' in feature %}
         STRUCT(
             '{{ feature_names[feature] }}' as feature,
             {{ feature }}_staging.{{ feature_names[feature] }} as value
         )
-        {% if not loop.last %}
-            ,
+            {% if not loop.last %}
+                ,
+            {% endif %}
         {% endif %}
     {% endfor %}
-    ] as features
+    ] as sparse_features
 from {{ ref('endpoint_save_given_impression') }} a
 {% for feature in feature_tables %}
 left join {{ feature }}_staging

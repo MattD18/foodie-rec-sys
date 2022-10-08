@@ -37,10 +37,12 @@ with user_df as (
 select
   CAST('{{ var("ds") }}' as DATE) as ds,
   a.user_id,
-  case 
-    when b.id is not null then b.id 
-    else (select count(*) from neighborhood_df) 
-  end as user_neighborhood_id,
+  [
+    case 
+      when b.id is not null then b.id 
+      else (select count(*) from neighborhood_df) 
+    end 
+  ] as user_neighborhood_id,
   [
     STRUCT('int_users' as table_name, a.ds as table_ds),
     STRUCT('lookup_neighborhood_id' as table_name, b.ds as table_ds)
