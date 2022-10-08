@@ -58,8 +58,8 @@ class DailyRuleBasedNeighborhoodV0Flow(FlowSpec):
             select
                 user_id,
                 user_neighborhood_id
-            from warehouse_feature_store.user_sparse_features
-            where ds = (select max(ds) from warehouse_feature_store.user_sparse_features)
+            from warehouse_feature_store.user_sparse_neighborhood_id
+            where ds = (select max(ds) from warehouse_feature_store.user_sparse_neighborhood_id)
         """
 
         self.user_df = bq_client.query(
@@ -70,8 +70,8 @@ class DailyRuleBasedNeighborhoodV0Flow(FlowSpec):
             select
                 restaurant_id,
                 restaurant_neighborhood_id,
-            from warehouse_feature_store.object_sparse_features
-            where ds = (select max(ds) from warehouse_feature_store.object_sparse_features)
+            from warehouse_feature_store.object_sparse_restaurant_neighborhood_id
+            where ds = (select max(ds) from warehouse_feature_store.object_sparse_restaurant_neighborhood_id)
         """
         self.restaurant_df = bq_client.query(
             query=restaurant_query
