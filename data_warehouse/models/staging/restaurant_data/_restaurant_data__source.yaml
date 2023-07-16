@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: restaurant_data
+    database: foodie-355420
+    dataset: restaurant_data
+    
+    tables:
+      - name: google_maps
+        identifier: google_maps
+        description: "Google Maps data scarped with Places API"

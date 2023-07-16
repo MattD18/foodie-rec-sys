@@ -11,18 +11,14 @@ target-path: "target"  # directory which will store compiled SQL files
 
 
 models:
-  data_warehouse: # Change from `my_new_project` to match the previous value for `name:`
+  data_warehouse:
     marts:
-      analytics:
-        +dataset: analytics
-      feature_store:
-        +dataset: feature_store
-      training_tables:
-        +dataset: training_tables
+      feature_generation:
+        +dataset: feature_generation
+      training_table_generation:
+        +dataset: training_table_generation
     staging:
-      application:
+      restaurant_data:
         +dataset: staging
-    intermediate:
-      +dataset: intermediate
 
     
