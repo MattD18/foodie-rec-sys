@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: application
+    database: foodie-355420
+    dataset: application
+    
+    tables:
+      - name: user_prediction_logging
+        identifier: user_prediction_logging
+        description: "Prediction logs from application database"
