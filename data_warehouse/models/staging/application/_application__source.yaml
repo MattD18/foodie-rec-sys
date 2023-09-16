@@ -9,3 +9,6 @@ sources:
       - name: user_prediction_logging
         identifier: user_prediction_logging
         description: "Prediction logs from application database"
+      - name: fct_user_engagement
+        identifier: fct_user_engagement
+        description: "Prediction logs from application database"
