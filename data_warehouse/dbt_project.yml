@@ -13,12 +13,12 @@ target-path: "target"  # directory which will store compiled SQL files
 models:
   data_warehouse:
     marts:
-      feature_generation:
-        +dataset: feature_generation
-      training_table_generation:
-        +dataset: training_table_generation
+      features:
+        +dataset: features
     staging:
+      application:
+        +dataset: application
       restaurant_data:
-        +dataset: staging
+        +dataset: restaurant_data
 
     
