@@ -8,4 +8,13 @@ sources:
     tables:
       - name: google_maps
         identifier: google_maps
-        description: "Google Maps data scarped with Places API"
+        description: "Google Maps data scraped with Places API"
+      - name: google_maps_v2
+        identifier: google_maps
+        description: "Google Maps data scraped with Places API (v2 metadata, ex: neighborhood)"
+      - name: neighborhoods
+        identifier: neighborhoods
+        description: "Neighborhood list from https://data.beta.nyc/dataset/pediacities-nyc-neighborhoods"
+      - name: google_maps_extra_cols
+        identifier: google_maps_extra_cols
+        description: "Google Maps data scraped with Places API supplemental data"
