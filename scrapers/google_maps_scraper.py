@@ -10,6 +10,10 @@ import pandas as pd
 from google.cloud import secretmanager
 from google.cloud import bigquery
 
+from shapely.geometry import Polygon, Point
+from shapely.wkt import loads
+import random
+
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -45,7 +49,7 @@ def get_query_content(query):
     return content
 
 
-def get_nearby_places(lat, long, radius=100):
+def get_nearby_places(lat, long, radius=50):
     keyword = 'restaurant'
     location = f'{lat},{long}'
     query = f'https://maps.googleapis.com/maps/api/place/nearbysearch/json?location={location}&radius={radius}&keyword={keyword}&key={API_KEY}'
@@ -85,6 +89,7 @@ def get_geostring(geometry_data):
         geo_string = f'POINT({lng} {lat})'
     return geo_string
 
+
 def upload_csv_to_bq(filename, dataset_id, table_id):
     '''
         uploads CSV to bigquery, precondition, table already exists
@@ -105,16 +110,57 @@ def upload_csv_to_bq(filename, dataset_id, table_id):
     print("Loaded {} rows into {}:{}.".format(job.output_rows, dataset_id, table_id))
 
 
-query_records = []
-place_records = []
+def generate_random_point_inside_polygon(polygon):
+    min_x, min_y, max_x, max_y = polygon.bounds
+
+    while True:
+        # Generate random coordinates within the bounding box of the polygon
+        x = random.uniform(min_x, max_x)
+        y = random.uniform(min_y, max_y)
+
+        # Create a Point object
+        point = Point(x, y)
+
+        # Check if the point is inside the polygon
+        if polygon.contains(point):
+            return y, x
+
+
+def get_query_points(n_priority=3, n_secondary=3):
+    '''
+        Use neighborhood polygons
+        Sample neighborhoods according to some weight (ex: 4 slots reserved for priority neighborhoods, 2 queries per day for random neighborhoods)
+        Sample a random lat/long point from inside each polygon
+    '''
+    query = """
+        SELECT name, borough, any_value(geo) as geo FROM restaurant_data.neighborhoods
+        group by 1, 2
+    """
+
+    df = client.query(
+        query=query
+    ).to_dataframe()
+
+    priority_neighborhoods = [
+        'Williamsburg', 'Park Slope', 'Upper East Side', 'Chelsea', 'East Village',  'West Village', 'Bushwick'
+    ]
+
+    priority_mask = df['name'].isin(priority_neighborhoods)
+    secondary_mask = ~df['name'].isin(priority_neighborhoods) & (~df['borough'].isin(['Staten Island', 'Bronx']))
+    sampled_neighborhoods = df[priority_mask]['name'].sample(n_priority).to_list() \
+        + df[secondary_mask]['name'].sample(n_secondary).to_list()
+    sampled_mask = df['name'].isin(sampled_neighborhoods)
+    query_points = df[sampled_mask].apply(lambda x: generate_random_point_inside_polygon(loads(x['geo'])), 1).to_list()
+    return query_points
 
 if __name__ == "__main__":
 
     # get list of query points
-    query_points = [
-        (40.71159018842078, -73.94526673018571)
-    ]
+    query_points = get_query_points()
 
+    
+    query_records = []
+    place_records = []
     # iterate through query points
     for lat, long in query_points:
 
@@ -167,7 +213,7 @@ if __name__ == "__main__":
     place_df = pd.DataFrame(place_records)
     place_df.to_csv('data/google_places.csv', index=False)      
 
-    # TODO upload dataframe to raw logs table
+    # upload dataframe to raw logs table
     upload_csv_to_bq(
         filename='data/google_places_queries.csv',
         dataset_id='restaurant_data',
