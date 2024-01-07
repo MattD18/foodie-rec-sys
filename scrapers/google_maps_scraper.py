@@ -128,7 +128,7 @@ def generate_random_point_inside_polygon(polygon):
             return y, x
 
 
-def get_query_points(n_priority=2, n_secondary=4):
+def get_query_points(n_priority=1, n_secondary=5):
     '''
         Use neighborhood polygons
         Sample neighborhoods according to some weight (ex: 4 slots reserved for priority neighborhoods, 2 queries per day for random neighborhoods)
