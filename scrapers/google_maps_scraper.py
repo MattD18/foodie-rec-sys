@@ -74,6 +74,8 @@ def get_field(field, content):
     if field in content:
         if field == 'editorial_summary':
             out = content[field]['overview']
+        elif field == "user_ratings_total":
+            out = float(content[field])
         else:
             out = content[field]
     else:
@@ -100,7 +102,7 @@ def upload_csv_to_bq(filename, dataset_id, table_id):
     job_config = bigquery.LoadJobConfig()
     job_config.source_format = bigquery.SourceFormat.CSV
     job_config.autodetect = True
-    job_config.write_disposition = 'WRITE_TRUNCATE'
+    job_config.write_disposition = 'WRITE_APPEND'
     # load the csv into bigquery
     with open(filename, "rb") as source_file:
         job = client.load_table_from_file(source_file, table_ref, job_config=job_config)
@@ -126,7 +128,7 @@ def generate_random_point_inside_polygon(polygon):
             return y, x
 
 
-def get_query_points(n_priority=3, n_secondary=3):
+def get_query_points(n_priority=2, n_secondary=4):
     '''
         Use neighborhood polygons
         Sample neighborhoods according to some weight (ex: 4 slots reserved for priority neighborhoods, 2 queries per day for random neighborhoods)
