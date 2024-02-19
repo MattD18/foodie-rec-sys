@@ -13,7 +13,7 @@ with google_maps_data as (
 select
   a.id,
   max(c.google_maps_rating) as ranking_quality_score,
-  ARRAY_AGG(DISTINCT d.name IGNORE NULLS) as place_tags
+  ARRAY_AGG(DISTINCT d.id IGNORE NULLS) as place_tags
 from {{ ref('stg_application_test__dim_restaurant') }} a
 left join {{ ref('stg_restaurant_data__restaurant_id_mapping') }} b
 on a.id = b.application_id
