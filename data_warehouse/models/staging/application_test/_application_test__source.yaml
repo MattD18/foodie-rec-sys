@@ -1,0 +1,14 @@
+version: 2
+
+sources:
+  - name: application_test
+    database: foodie-355420
+    dataset: application_test
+    
+    tables:
+      - name: dim_restaurant
+        identifier: dim_restaurant
+        description: "Restaurant table from application database"
+      - name: dim_place
+        identifier: dim_place
+        description: "Place table from application database"

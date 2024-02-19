@@ -18,3 +18,9 @@ sources:
       - name: google_maps_extra_cols
         identifier: google_maps_extra_cols
         description: "Google Maps data scraped with Places API supplemental data"
+      - name: google_maps_place_logs
+        identifier: google_maps_place_logs
+        description: "Log data from scraping Google Maps Places API (newest version)"
+      - name: restaurant_id_mapping
+        identifier: restaurant_id_mapping
+        description: "Google maps to application id mapping"
