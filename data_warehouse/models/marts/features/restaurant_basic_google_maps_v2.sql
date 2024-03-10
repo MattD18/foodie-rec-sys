@@ -19,6 +19,6 @@ left join {{ ref('stg_restaurant_data__restaurant_id_mapping') }} b
 on a.id = b.application_id
 left join google_maps_data c
 on b.google_maps_id = c.place_id
-left join {{ ref('stg_application_test__dim_place') }} d
+left join {{ ref('stg_application_prod__dim_place') }} d
 on ST_CONTAINS(ST_GEOGFROMTEXT(d.geo), ST_GEOGFROMTEXT(c.geo))
 group by 1
