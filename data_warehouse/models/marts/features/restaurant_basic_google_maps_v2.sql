@@ -14,11 +14,11 @@ select
   a.id,
   max(c.google_maps_rating) as ranking_quality_score,
   ARRAY_AGG(DISTINCT d.id IGNORE NULLS) as place_tags
-from {{ ref('stg_application_test__dim_restaurant') }} a
+from {{ ref('stg_application__dim_restaurant') }} a
 left join {{ ref('stg_restaurant_data__restaurant_id_mapping') }} b
 on a.id = b.application_id
 left join google_maps_data c
 on b.google_maps_id = c.place_id
-left join {{ ref('stg_application_prod__dim_place') }} d
+left join {{ ref('stg_application__dim_place') }} d
 on ST_CONTAINS(ST_GEOGFROMTEXT(d.geo), ST_GEOGFROMTEXT(c.geo))
 group by 1
