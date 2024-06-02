@@ -41,7 +41,7 @@ INFATUATION_URL = 'https://www.theinfatuation.com/new-york'
 if __name__ == "__main__":
 
     # sleep for random amount of time
-    time_to_sleep = random.uniform(1, 5)
+    time_to_sleep = random.uniform(1, 10800)
     print(f"Sleeping for {time_to_sleep:.2f} seconds")
     time.sleep(time_to_sleep)
     # Home page URL scraping
