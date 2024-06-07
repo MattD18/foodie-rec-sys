@@ -103,19 +103,24 @@ if __name__ == "__main__":
 
 
     guide_title_class_pattern = re.compile(r'.*styles_title.*')
-    date_div_pattern = re.compile('styles_contributorsList.*')
-    guide_body_class_pattern = re.compile(r'.*styles_postContent.*')
+    date_div_pattern = re.compile(r'styles_contributorsList.*')
+    guide_body_class_pattern = re.compile(r'.*styles_postContent.*flatplan_body.*')
     restaurant_title_pattern = re.compile(r'.*flatplan_venue-heading.*')
-
+    restaurant_div_pattern = re.compile(r'.*styles_venueContainer.*')
+    restaurant_desc_pattern = re.compile(r'.*chakra-text.*')
+    perfect_for_class_pattern = re.compile(r'.*flatplan_perfectFor.*')
+    perfect_for_span_class_pattern = re.compile(r'.*perfectForTag.*')
+    cuisine_tag_pattern = re.compile(r'.*cuisineTag.*')
+    neighborhood_tag_pattern = re.compile('.*neighborhoodTag.*')
 
     for i, url in enumerate(candidate_guides):
         print(url)
         # sleep for random amount of time
         time_to_sleep = random.uniform(1, 5)
         print(f"Sleeping for {time_to_sleep:.2f} seconds")
-        time.sleep(time_to_sleep)
-        # Home page URL scraping
-        print('Scrape NY homepage')
+        #TODO: Uncomment 
+        # time.sleep(time_to_sleep)
+        
         headers = {
             'User-Agent': get_random_user_agent(user_agents)
         }
@@ -126,22 +131,25 @@ if __name__ == "__main__":
         # import pdb;pdb.set_trace()
         
         # Extract guide data
+        guide_body_div = soup.find('div', class_=guide_body_class_pattern)
         guide_record = {
             'title':soup.find('span', class_=guide_title_class_pattern).getText(),
             'publish_date': soup.find('div', class_=date_div_pattern).find('p').getText(),
-            'description_list':[], #TODO: figure out how to pull guide description
+            'description_list':[guide_body_div.find('p').getText()],
             'guide_url':url,
         }
-        print(guide_record)
         
-    #     # Parse Document and xtract metadata from body
-        guide_body_div = soup.find('div', class_=guide_body_class_pattern)
-        restaurant_names = [c.text for c in soup.find_all('h2', class_=restaurant_title_pattern)]
-        num_restaurants = len(restaurant_names)
-        restaurant_records = {}
-        for rn in restaurant_names:
-            restaurant_records[rn]={}
-
+        # Extract restaurant data        
+        restaurant_names = [c.text for c in guide_body_div.find_all('h2', class_=restaurant_title_pattern)]
+        restaurant_divs = dict(zip(
+            restaurant_names,
+            guide_body_div.find_all('div', class_=restaurant_div_pattern)
+        ))
+        restaurant_descriptions = dict(zip(
+            restaurant_names,
+            [p.getText() for p in guide_body_div.find_all('p', class_=restaurant_desc_pattern, recursive=False)[1:]]
+        ))
+        assert len(restaurant_names) == len(restaurant_divs) == len(restaurant_descriptions)
         # TODO: find ratings logic
     #     rating_divs = guide_body_div.find_all('div', 'styles_badge__cDu6b styles_standalone__TQgI0 styles_rating__0wWpz')
     #     restaurant_rating_dict = dict(zip(
@@ -149,23 +157,46 @@ if __name__ == "__main__":
     #     [x.text for x in rating_divs]
     #     ))
 
+        # initialize restaurant data structure
+        num_restaurants = len(restaurant_names)
+        restaurant_records = {}
+        for rn in restaurant_names:
+            restaurant_records[rn]={}
+
+        # populate restaurant data structure
+        
         for r in restaurant_records:
-            restaurant_records.get(r)['description_list'] = []
+            r_div = restaurant_divs.get(r)
+            tag_set = r_div.find_all('p', {'data-testid': 'tags-groupTag'})
+            r_perfect_for_div = r_div.find('div', class_=perfect_for_class_pattern)
+            r_cusine_tags = r_div.find_all('span', class_=cuisine_tag_pattern)
+            r_neighborhood_tags = r_div.find_all('span', class_=neighborhood_tag_pattern)
+            restaurant_records.get(r)['description_list'] = [restaurant_descriptions.get(r)]
             restaurant_records.get(r)['tags'] = []
             restaurant_records.get(r)['review_link'] = None
-            restaurant_records.get(r)['tags'] = []
-            restaurant_records.get(r)['perfect_for'] = []
-            restaurant_records.get(r)['price'] = None
-            restaurant_records.get(r)['neighborhood'] = None
+            restaurant_records.get(r)['cusine'] = [c.getText() for c in r_cusine_tags]
+            # import pdb;pdb.set_trace()
+            restaurant_records.get(r)['perfect_for'] = [span.getText() for span in r_perfect_for_div.find_all('span', class_=perfect_for_span_class_pattern)]
+            restaurant_records.get(r)['price'] = [span.get('data-price') for span in r_div.find_all('span') if 'data-price' in span.attrs]
+            
+            restaurant_records.get(r)['neighborhood'] = [n.getText() for n in r_neighborhood_tags]
             restaurant_records.get(r)['address'] = []
             # restaurant_records.get(r)['rating'] = restaurant_rating_dict.get(r) #TODO
             restaurant_records.get(r)['rating'] = None
             restaurant_records.get(r)['guide_link'] = url
+        
+        restaurant_record_dict.update(restaurant_records)
+        guide_record_list.append(guide_record)
 
-        restaurant_counter = -1
-        guide_flag = True
-        for content in guide_body_div.children:
-            import pdb;pdb.set_trace()
+    import pdb; pdb.set_trace()
+
+
+
+  
+        # restaurant_counter = -1
+        # guide_flag = True
+        # for content in guide_body_div.children:
+        
     #         if restaurant_counter >= 0:
     #             guide_flag = False
     #         if content.name in ('p', 'div'):
