@@ -13,6 +13,11 @@ from bs4 import BeautifulSoup
 from google.cloud import secretmanager
 from google.cloud import bigquery
 from google.cloud import storage
+from configs import (
+    restaurant_records_schema, 
+    guide_record_schema, 
+    guide_skip_list
+)
 
 # List of user-agent strings
 user_agents = [
@@ -51,8 +56,33 @@ else:
 API_KEY = os.environ['GOOGLE_MAPS_API_KEY']
 PROJECT_ID = os.environ['PROJECT_ID']
 
-# create a client instance for your project
-client = bigquery.Client(project=PROJECT_ID, location="US")
+bq_client = bigquery.Client(project=PROJECT_ID, location="US")
+
+def upload_to_bigquery(dataset_id, table_id, data, schema):
+    # create a client instance for your project
+    bq_client = bigquery.Client(project=PROJECT_ID, location="US")
+
+    # If the table does not exist, create it
+    full_table_id = f'foodie-355420.restaurant_data.{table_id}'
+    try:
+        # Try to get the table, if it exists
+        table = bq_client.get_table(full_table_id)
+    except:
+        
+        table = bigquery.Table(full_table_id, schema=schema)
+        table = bq_client.create_table(table)
+        print(f"Created table {table_id} in dataset {dataset_id}")
+    
+
+
+    table_ref = bq_client.dataset(dataset_id).table(table_id)
+    table = bq_client.get_table(table_ref)
+    errors = bq_client.insert_rows_json(table, data)
+    if errors:
+        print(f"Encountered errors while inserting rows: {errors}")
+    else:
+        print("Data uploaded successfully.")
+
 
 def download_from_gcs(bucket_name, source_blob_name, destination_file_name):
     """Downloads a file from the bucket."""
@@ -70,13 +100,16 @@ INFATUATION_LOCAL_FILE = 'data/infatuation_link_list.json'
 if __name__ == "__main__":
 
     # get existing guides
-    query = """
-        SELECT distinct guide_url from restaurant_data.infatuation_guides
-    """
+    try:
+        query = """
+            SELECT distinct guide_url from restaurant_data.infatuation_guides_v2
+        """
 
-    scraped_guides = client.query(
-        query=query
-    ).to_dataframe()['guide_url'].tolist()
+        scraped_guides = bq_client.query(
+            query=query
+        ).to_dataframe()['guide_url'].tolist()
+    except:
+        scraped_guides = []
     print(len(scraped_guides))
     
     # get link list for new guides
@@ -91,8 +124,10 @@ if __name__ == "__main__":
     
     # take set difference for new links and randomly sample subset for scraping
     candidate_guides = list(set(new_guides).difference(set(scraped_guides)))
-    sample_size = min(len(candidate_guides), 2)
+    sample_size = min(len(candidate_guides), 3)
     candidate_guides = random.sample(candidate_guides, sample_size)
+    print(len(candidate_guides))
+    candidate_guides = [x for x in candidate_guides if x not in guide_skip_list]
     print(len(candidate_guides))
     # iterate through links
     # extract guide + restaurant data 
@@ -101,7 +136,7 @@ if __name__ == "__main__":
     restaurant_record_dict = {}
     skipped_urls = []
 
-
+    # regex to collect scraped guides
     guide_title_class_pattern = re.compile(r'.*styles_title.*')
     date_div_pattern = re.compile(r'styles_contributorsList.*')
     guide_body_class_pattern = re.compile(r'.*styles_postContent.*flatplan_body.*')
@@ -149,13 +184,24 @@ if __name__ == "__main__":
             restaurant_names,
             [p.getText() for p in guide_body_div.find_all('p', class_=restaurant_desc_pattern, recursive=False)[1:]]
         ))
-        assert len(restaurant_names) == len(restaurant_divs) == len(restaurant_descriptions)
+
+        assert len(restaurant_names) == len(restaurant_divs)
         # TODO: find ratings logic
     #     rating_divs = guide_body_div.find_all('div', 'styles_badge__cDu6b styles_standalone__TQgI0 styles_rating__0wWpz')
     #     restaurant_rating_dict = dict(zip(
     #     [re.match(r'(.*) ([a-z]*) image$', x.parent.find('img', 'styles_image__520x0').attrs['alt']).group(1) for x in rating_divs],
     #     [x.text for x in rating_divs]
     #     ))
+
+        # Extract the JSON string from the script tag
+        scripts = soup.find_all('script', type='application/ld+json')
+        json_str = scripts[1].string
+        # Parse the JSON string
+        data = json.loads(json_str)
+        adress_dict_keys = [x['name'].replace("&apos;", "'") for x in data['itemListElement']]
+        adress_dict_values = [x['item']['address']['name'] for x in data['itemListElement']]
+        adress_dict = dict(zip(adress_dict_keys, adress_dict_values))
+        print(len(adress_dict ))
 
         # initialize restaurant data structure
         num_restaurants = len(restaurant_names)
@@ -171,16 +217,23 @@ if __name__ == "__main__":
             r_perfect_for_div = r_div.find('div', class_=perfect_for_class_pattern)
             r_cusine_tags = r_div.find_all('span', class_=cuisine_tag_pattern)
             r_neighborhood_tags = r_div.find_all('span', class_=neighborhood_tag_pattern)
+            r_price_list = [
+                span.get('data-price') for span in r_div.find_all('span') 
+                if 'data-price' in span.attrs
+            ]
+            r_price = None
+            if len(r_price_list) > 0:
+                r_price = r_price_list[0]
             restaurant_records.get(r)['description_list'] = [restaurant_descriptions.get(r)]
-            restaurant_records.get(r)['tags'] = []
             restaurant_records.get(r)['review_link'] = None
             restaurant_records.get(r)['cusine'] = [c.getText() for c in r_cusine_tags]
             # import pdb;pdb.set_trace()
-            restaurant_records.get(r)['perfect_for'] = [span.getText() for span in r_perfect_for_div.find_all('span', class_=perfect_for_span_class_pattern)]
-            restaurant_records.get(r)['price'] = [span.get('data-price') for span in r_div.find_all('span') if 'data-price' in span.attrs]
+            if r_perfect_for_div is not None:
+                restaurant_records.get(r)['perfect_for'] = [span.getText() for span in r_perfect_for_div.find_all('span', class_=perfect_for_span_class_pattern)]
+            restaurant_records.get(r)['price'] = r_price
             
             restaurant_records.get(r)['neighborhood'] = [n.getText() for n in r_neighborhood_tags]
-            restaurant_records.get(r)['address'] = []
+            restaurant_records.get(r)['address'] = adress_dict.get(r)
             # restaurant_records.get(r)['rating'] = restaurant_rating_dict.get(r) #TODO
             restaurant_records.get(r)['rating'] = None
             restaurant_records.get(r)['guide_link'] = url
@@ -188,9 +241,27 @@ if __name__ == "__main__":
         restaurant_record_dict.update(restaurant_records)
         guide_record_list.append(guide_record)
 
-    import pdb; pdb.set_trace()
 
 
+    # upload to bigquery
+    # Convert restaurant_record_dict to a list of dictionaries
+    restaurant_records_list = [
+        {"restaurant_name": k, **v} for k, v in restaurant_record_dict.items()
+    ]
+    # Upload restaurant_records_list to BigQuery
+    upload_to_bigquery(
+        "restaurant_data", 
+        "infatuation_restaurants_v2", 
+        restaurant_records_list, 
+        restaurant_records_schema
+    )
+    # Upload guide_record_list to BigQuery
+    upload_to_bigquery(
+        "restaurant_data", 
+        "infatuation_guides_v2", 
+        guide_record_list, 
+        guide_record_schema
+    )
 
   
         # restaurant_counter = -1
