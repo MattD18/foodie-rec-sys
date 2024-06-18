@@ -36,7 +36,7 @@ def download_from_gcs(bucket_name, source_blob_name, destination_file_name):
 INFATUATION_GCS_BUCKET = 'foodie-infatuation-data'
 INFATUATION_GCS_BLOB = 'infatuation_link_list.json'
 INFATUATION_LOCAL_FILE = 'data/infatuation_link_list.json'
-INFATUATION_URL = 'https://www.theinfatuation.com/new-york'
+INFATUATION_URL = 'https://www.theinfatuation.com/new-york/guides'
 
 if __name__ == "__main__":
 

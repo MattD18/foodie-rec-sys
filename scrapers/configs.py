@@ -81,3 +81,7 @@ guide_skip_list =[
   'https://www.theinfatuation.com/new-york/guides/best-diners-nyc'    
 ]
 
+
+manual_guide_list = [
+    'https://www.theinfatuation.com'
+]
