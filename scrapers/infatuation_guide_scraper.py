@@ -151,7 +151,7 @@ if __name__ == "__main__":
     for i, url in enumerate(candidate_guides):
         print(url)
         # sleep for random amount of time
-        time_to_sleep = random.uniform(1, 5)
+        time_to_sleep = random.uniform(1, 10800)
         print(f"Sleeping for {time_to_sleep:.2f} seconds")
         #TODO: Uncomment 
         # time.sleep(time_to_sleep)
